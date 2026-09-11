@@ -264,6 +264,19 @@ class EBM(ABC):
     def effective_number_variables(self) -> float: ...
 
 
+    def compute_gradient_energy_visibles(self, v: Tensor) -> Tensor:
+        """Returns the gradient of the marginalized energy of the model computed on the visible configurations
+
+        Args:
+            v (Tensor): Visible configurations
+            params (IIRBM): Parameters of the RBM
+
+        Returns:
+            Tensor: The computed gradient of the visible energy.
+        """
+        raise NotImplementedError
+
+
 class RBM(EBM):
     """An abstract class representing the parameters of a RBM."""
 

@@ -123,6 +123,12 @@ def add_grad_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
         help="(Defaults to 0.0). Lambda parameter for the L2 regularization.",
     )
     grad_args.add_argument(
+        "--effL2",
+        default=None,
+        type=float,
+        help="(Defaults to 0.0). Lambda parameter for the effective model L2 regularization.",
+    )
+    grad_args.add_argument(
         "--no_center",
         default=False,
         action="store_true",
@@ -218,6 +224,12 @@ def add_args_regularization(parser: argparse.ArgumentParser) -> argparse.Argumen
         default=None,
         type=float,
         help="(Defaults to 0.0). Lambda parameter for the L2 regularization.",
+    )
+    reg_args.add_argument(
+        "--effL2",
+        default=None,
+        type=float,
+        help="(Defaults to 0.0). Lambda parameter for the effective model L2 regularization.",
     )
     return parser
 

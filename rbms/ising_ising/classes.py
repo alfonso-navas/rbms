@@ -15,6 +15,7 @@ from rbms.ising_ising.implement import (
     _init_parameters,
     _sample_hiddens,
     _sample_visibles,
+    _compute_gradient_energy_visibles
 )
 
 
@@ -248,3 +249,10 @@ class IIRBM(RBM):
 
     def pre_grad_update(self):
         pass
+    
+    
+    def compute_gradient_energy_visibles(self, v: Tensor) -> Tensor:
+        
+        return _compute_gradient_energy_visibles(
+            v=v, vbias=self.vbias, hbias=self.hbias, weight_matrix=self.weight_matrix
+        )

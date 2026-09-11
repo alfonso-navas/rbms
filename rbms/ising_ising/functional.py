@@ -8,6 +8,7 @@ from rbms.ising_ising.implement import (
     _compute_energy,
     _compute_energy_hiddens,
     _compute_energy_visibles,
+    _compute_gradient_energy_visibles,
     _compute_gradient,
     _init_chains,
     _init_parameters,
@@ -98,6 +99,19 @@ def compute_energy_visibles(v: Tensor, params: IIRBM) -> Tensor:
         v=v, vbias=params.vbias, hbias=params.hbias, weight_matrix=params.weight_matrix
     )
 
+def compute_gradient_energy_visibles(v: Tensor, params: IIRBM) -> Tensor:
+    """Returns the gradient of the marginalized energy of the model computed on the visible configurations
+
+    Args:
+        v (Tensor): Visible configurations
+        params (IIRBM): Parameters of the RBM
+
+    Returns:
+        Tensor: The computed gradient of the visible energy.
+    """
+    return _compute_gradient_energy_visibles(
+        v=v, vbias=params.vbias, hbias=params.hbias, weight_matrix=params.weight_matrix
+    )
 
 def compute_energy_hiddens(h: Tensor, params: IIRBM) -> Tensor:
     """Returns the marginalized energy of the model computed on hidden configurations

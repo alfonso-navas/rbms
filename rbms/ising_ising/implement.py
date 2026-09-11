@@ -1,6 +1,5 @@
 import torch
-from torch import Tensor
-
+from torch import Tensor, tanh
 from rbms.custom_fn import log2cosh
 
 
@@ -9,6 +8,7 @@ def _sample_hiddens(
 ) -> tuple[Tensor, Tensor]:
     effective_field = beta * (hbias + (v @ weight_matrix))
     mh = torch.tanh(effective_field)
+    assert (torch.sigmoid(2 * effective_field) >= 0).all() and (torch.sigmoid(2 * effective_field) <=1).all(), f"v: {v}\n w: {weight_matrix}\n hbias: {hbias}"
     h = 2 * torch.bernoulli(torch.sigmoid(2 * effective_field)) - 1
     return h, mh
 
@@ -46,6 +46,13 @@ def _compute_energy_visibles(
     exponent = hbias + (v @ weight_matrix)
     log_term = log2cosh(exponent)
     return -field - log_term.sum(1)
+
+def _compute_gradient_energy_visibles(
+        v: Tensor, vbias: Tensor, hbias: Tensor, weight_matrix: Tensor) -> Tensor:
+    grad_vbias = -v
+    grad_hbias = -tanh( v @ weight_matrix + hbias)
+    grad_weight_matrix = torch.bmm(v.unsqueeze(-1), grad_hbias.unsqueeze(1))
+    return grad_weight_matrix, grad_vbias, grad_hbias
 
 
 def _compute_energy_hiddens(
