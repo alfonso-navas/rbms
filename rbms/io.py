@@ -8,6 +8,12 @@ from rbms.map_model import map_model
 from rbms.utils import restore_rng_state
 
 
+def _to_numpy(x: Tensor | np.ndarray) -> np.ndarray:
+    """Convert a tensor to a numpy array on the CPU, leaving arrays untouched."""
+    if isinstance(x, Tensor):
+        return x.detach().cpu().numpy()
+    return np.asarray(x)
+
 @torch.compiler.disable
 def save_model(
     filename: str,
@@ -18,6 +24,8 @@ def save_model(
     learning_rate: Tensor,
     effective_time: np.ndarray,
     flags: list[str] = [],
+    grad_log_likelihood: dict[str, Tensor] | None = None,
+    penalty: dict[str, Tensor] | None = None,
 ) -> None:
     """Save the current state of the model.
 
@@ -27,7 +35,11 @@ def save_model(
         chains (dict[str, Tensor]): The parallel chains used for sampling.
         num_updates (int): The number of updates performed.
         time (float): Elapsed time.
-        flags (List[str]): flags for the current update. Defaults to []
+        flags (List[str]): flags for the current update. Defaults to [].
+        grad_log_likelihood (dict[str, Tensor], optional): The gradient of the log-likelihood.
+            Defaults to None.
+        penalty (dict[str, Tensor], optional): The penalty added to the gradient by the modules
+            of `pre_grad_update` during the last call. Defaults to None.
     """
 
     named_params = params.named_parameters()
@@ -41,6 +53,28 @@ def save_model(
             params_ckpt[n] = p
             # This is for retrocompatibility purpose
             checkpoint[n] = params_ckpt[n]
+        
+        # Save the gradient of the log-likelihood and the penalty
+        for group_name, named_grad in [
+            ("grad_log_likelihood", grad_log_likelihood),
+            ("penalty", penalty),
+        ]:
+            if named_grad is None:
+                continue
+            grad_ckpt = checkpoint.create_group(group_name)
+            for n, g in named_grad.items():
+                if n not in named_params.keys():
+                    raise ValueError(
+                        f"'{n}' is not a parameter of the model. Expected one of "
+                        f"{list(named_params.keys())}."
+                    )
+                g = _to_numpy(g)
+                if g.shape != named_params[n].shape:
+                    raise ValueError(
+                        f"'{group_name}/{n}' has shape {g.shape} but the parameter "
+                        f"'{n}' has shape {named_params[n].shape}."
+                    )
+                grad_ckpt[n] = g
         # Save current random state
         checkpoint["torch_rng_state"] = torch.get_rng_state()
         checkpoint["numpy_rng_arg0"] = np.random.get_state()[0]
@@ -91,6 +125,32 @@ def load_params(
             params[k] = f[last_file_key]["params"][k][()]
             model_type = f["model_type"][()].decode()
     return map_model[model_type].set_named_parameters(params, device=device, dtype=dtype)
+
+def load_grad(
+    filename: str,
+    index: int,
+    kind: str = "grad_log_likelihood",
+) -> dict[str, np.ndarray]:
+    """Load a saved gradient at the given update index.
+
+    Args:
+        filename (str): The name of the file containing the saved model.
+        index (int): The update index from which to load the gradient.
+        kind (str, optional): Either "grad_log_likelihood" or "penalty".
+            Defaults to "grad_log_likelihood".
+
+    Returns:
+        dict[str, np.ndarray]: A mapping name -> gradient array, with the same names
+            and shapes as the parameters.
+    """
+    last_file_key = f"update_{index}"
+    with h5py.File(filename, "r") as f:
+        if kind not in f[last_file_key].keys():
+            raise KeyError(
+                f"No '{kind}' saved at {last_file_key} in {filename}. "
+                f"Available keys: {list(f[last_file_key].keys())}"
+            )
+        return {n: f[last_file_key][kind][n][()] for n in f[last_file_key][kind].keys()}
 
 
 def load_model(

@@ -5,6 +5,7 @@ import torch
 from rbms.classes import EBM, Sampler
 from rbms.dataset.dataset_class import RBMDataset
 from rbms.io import save_model, save_sampler
+from rbms.pre_grad import get_penalty
 from torch.optim import Optimizer
 from tqdm.autonotebook import tqdm
 
@@ -51,15 +52,19 @@ def train(
             start_v=data,
         )
         parallel_chains = sampler.get_conf_grad(batch=data)
-
+        
         params.compute_gradient(
             data=curr_batch,
             chains=parallel_chains,
             centered=centered,
         )
+        # Gradient of the log-likelihood, before any penalty or rescaling
+        grad_log_likelihood = params.named_grads()
+
         # Do a bunch of modification on the gradient
 
         pre_grad_update(input=None)
+        penalty = get_penalty(pre_grad_update=pre_grad_update, params=params)
         params.pre_grad_update()
         sampler.pre_grad_update()
 
@@ -96,7 +101,7 @@ def train(
             # pbar.write(metrics)
             curr_time = time.perf_counter() - start
             learning_rate = torch.tensor([opt.param_groups[0]["lr"] for opt in optimizer])
-            save_model(
+                        save_model(
                 filename=filename,
                 params=params,
                 chains=parallel_chains,
@@ -105,6 +110,8 @@ def train(
                 learning_rate=learning_rate,
                 flags=flags,
                 effective_time=effective_time,
+                grad_log_likelihood=grad_log_likelihood,
+                penalty=penalty,
             )
 
             save_sampler(filename, sampler, idx)

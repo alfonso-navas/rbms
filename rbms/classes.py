@@ -221,6 +221,46 @@ class EBM(ABC):
         """
         ...
 
+    def named_parameters_tensor(self) -> dict[str, Tensor]:
+        """Same keys as `named_parameters()`, but returns the parameter tensors
+        themselves instead of numpy copies.
+
+        Returns:
+            dict[str, Tensor]: A mapping name -> parameter tensor.
+        """
+        names = list(self.named_parameters().keys())
+        tensors = self.parameters()
+        if len(names) != len(tensors):
+            raise RuntimeError(
+                f"{self.name}: `named_parameters()` has {len(names)} entries but "
+                f"`parameters()` has {len(tensors)}. They must be in the same order."
+            )
+        return dict(zip(names, tensors))
+
+    def named_grads(self) -> dict[str, Tensor]:
+        """Detached copy of the gradient currently attached to each parameter.
+
+        The returned tensors follow exactly the same naming and the same shapes as
+        `named_parameters()`, so they can be saved with the same layout as the
+        parameters.
+
+        Returns:
+            dict[str, Tensor]: A mapping name -> gradient tensor.
+        """
+        named_grads = {}
+        for name, p in self.named_parameters_tensor().items():
+            if p.grad is None:
+                named_grads[name] = torch.zeros_like(p)
+            else:
+                if p.grad.shape != p.shape:
+                    raise RuntimeError(
+                        f"{self.name}: gradient of '{name}' has shape "
+                        f"{tuple(p.grad.shape)} but the parameter has shape "
+                        f"{tuple(p.shape)}."
+                    )
+                named_grads[name] = p.grad.detach().clone()
+        return named_grads
+    
     def init_grad(self) -> None:
         for p in self.parameters():
             p.grad = torch.zeros_like(p)

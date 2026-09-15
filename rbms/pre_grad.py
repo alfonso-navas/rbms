@@ -1,4 +1,5 @@
 import torch
+from torch import Tensor
 from torch.optim import Optimizer
 from rbms.classes import EBM
 
@@ -7,23 +8,30 @@ class L1Regularization(torch.nn.Module):
         super().__init__(*args, **kwargs)
         self.optimizer = optimizer
         self.lambda_l1 = lambda_l1
+        self.penalty: dict[int, Tensor] = {}
 
     def forward(self, input):
+        self.penalty = {}
         for opt in self.optimizer:
             for p in opt.param_groups[0]["params"]:
-                p.grad -= self.lambda_l1 * torch.sign(p)
-
+                curr_penalty = -self.lambda_l1 * torch.sign(p)
+                p.grad += self.penalty
+                self.penalty[id(p)] = curr_penalty.detach()
 
 class L2Regularization(torch.nn.Module):
     def __init__(self, optimizer: list[Optimizer], lambda_l2: float, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.optimizer = optimizer
         self.lambda_l2 = lambda_l2
+        self.penalty: dict[int, Tensor] = {}
 
     def forward(self, input):
+        self.penalty = {}
         for opt in self.optimizer:
             for p in opt.param_groups[0]["params"]:
-                p.grad -= self.lambda_l2 * p
+                curr_penalty = -self.lambda_l2 * p
+                p.grad += curr_penalty
+                self.penalty[id(p)] = curr_penalty.detach()
 
 # Only implemented for Ising-Ising
 class EffectiveL2Regularization(torch.nn.Module):
@@ -34,23 +42,28 @@ class EffectiveL2Regularization(torch.nn.Module):
         self.lambda_eff_l2 = lambda_eff_l2
         self.model: EBM = kwargs["model"]
         self.batch_size = kwargs["batch_size"]
+        self.penalty: dict[int, Tensor] = {}
     
     def forward(self, input):
+        self.penalty = {}
         v = 2*torch.randint(0, 2, (self.batch_size,self.model.num_visibles), device=self.model.device, dtype=self.model.dtype) - 1
         energy = self.model.compute_energy_visibles(v)
         energy_gradient = self.model.compute_gradient_energy_visibles(v)
-    
+        param_index = {id(p): i for i, p in enumerate(self.model.parameters())}
+
         for opt in self.optimizer:
-            for i, p in enumerate(opt.param_groups[0]["params"]):
+            for p in opt.param_groups[0]["params"]:
+                i = param_index[id(p)]
                 aux_energy = energy.clone()
                 for _ in range(energy_gradient[i].dim() - 1):
                     aux_energy = aux_energy.unsqueeze(-1)
                 penalty = ((aux_energy - aux_energy.mean(axis=0, keepdim=True))
                            *(energy_gradient[i] - energy_gradient[i].mean(axis=0, keepdim=True))
-                ) 
-                           
-                p.grad -= self.lambda_eff_l2 * penalty.mean(axis=0)
-                # print(penalty)
+                )
+
+                curr_penalty = -self.lambda_eff_l2 * penalty.mean(axis=0)
+                p.grad += curr_penalty
+                self.penalty[id(p)] = curr_penalty.detach()
 
 
 
@@ -116,3 +129,41 @@ def build_pre_grad_update(
         *[ClipGradNorm(optimizer=optimizer, max_grad_norm=max_grad_norm)]
         * (max_grad_norm > 0),
         )
+
+def get_penalty(
+    pre_grad_update: torch.nn.Sequential, params: EBM
+) -> dict[str, Tensor]:
+    """Total penalty added to the gradient by the modules of `pre_grad_update`
+    during the last call, for each parameter of the model.
+
+    Args:
+        pre_grad_update (torch.nn.Sequential): The modules applied to the gradient
+            before the optimizer step.
+        params (EBM): The model whose parameters received the penalty.
+
+    Returns:
+        dict[str, Tensor]: A mapping name -> penalty tensor, with the same names and
+            shapes as `params.named_parameters()`.
+
+    Notes:
+        - Sign convention: the returned tensors are the terms *added* to the gradient.
+          With no rescaling module active, `p.grad = grad_log_likelihood + penalty`.
+        - `NormalizeGrad` and `ClipGradNorm` are not penalties: they rescale the whole
+          gradient and are therefore not accounted for here.
+    """
+    named_tensors = params.named_parameters_tensor()
+    id_to_name = {id(p): name for name, p in named_tensors.items()}
+    total = {name: torch.zeros_like(p) for name, p in named_tensors.items()}
+    for module in pre_grad_update:
+        penalty = getattr(module, "penalty", None)
+        if not penalty:
+            continue
+        for param_id, value in penalty.items():
+            name = id_to_name.get(param_id)
+            if name is None:
+                raise RuntimeError(
+                    "A penalty was recorded for a tensor which is not a parameter of "
+                    "the model passed to `get_penalty`."
+                )
+            total[name] += value
+    return total
