@@ -80,6 +80,7 @@ def main(args, map_model=map_model):
             centered=not (args["no_center"]),
             L1=args["L1"],
             L2=args["L2"],
+            effL2 = args["effL2"],
             normalize_grad=args["normalize_grad"],
             max_norm_grad=args["max_norm_grad"],
             subset_labels=args["subset_labels"],
@@ -153,7 +154,7 @@ def main(args, map_model=map_model):
 
         case _:
             raise ValueError(f"No training type {args['training_type']} supported.")
-    print(train_dataset)
+    
     train(
         train_dataset=train_dataset,
         test_dataset=test_dataset,
@@ -191,6 +192,8 @@ def load_args_from_filename(args: dict):
             args["L1"] = f["grad_args"]["L1"][()].item()
         if args["L2"] is None:
             args["L2"] = f["grad_args"]["L2"][()].item()
+        if args["effL2"] is None and "effL2" in f["grad_args"].keys():
+            args["effL2"] = f["grad_args"]["effL2"][()].item()
         if args["normalize_grad"] is None:
             args["normalize_grad"] = f["grad_args"]["normalize_grad"][()].item()
         if args["max_norm_grad"] is None:

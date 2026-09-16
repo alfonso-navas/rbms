@@ -41,6 +41,7 @@ def _init_training(
     device: torch.device | str,
     flags: list[str],
     map_model: dict[str, type[EBM]] = map_model,
+    effL2: float = 0.0,
 ):
     if model_type is None:
         match train_dataset.variable_type:
@@ -110,6 +111,7 @@ def _init_training(
         grad["max_norm_grad"] = max_norm_grad
         grad["L1"] = L1
         grad["L2"] = L2
+        grad["effL2"] = effL2
 
         sampling = f.create_group("sampling_args")
         sampling["gibbs_steps"] = gibbs_steps

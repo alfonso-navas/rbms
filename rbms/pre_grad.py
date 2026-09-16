@@ -15,7 +15,7 @@ class L1Regularization(torch.nn.Module):
         for opt in self.optimizer:
             for p in opt.param_groups[0]["params"]:
                 curr_penalty = -self.lambda_l1 * torch.sign(p)
-                p.grad += self.penalty
+                p.grad += curr_penalty
                 self.penalty[id(p)] = curr_penalty.detach()
 
 class L2Regularization(torch.nn.Module):
@@ -98,37 +98,64 @@ def build_pre_grad_update(
     optimizer: list[Optimizer],
     lambda_l1: float,
     lambda_l2: float,
-    lambda_eff_l2 : float,
     normalize_grad: bool,
     max_grad_norm: float,
+    lambda_eff_l2: float | None = 0.0,
     **kwargs,
-):
-    # return torch.compile(
-    #     torch.nn.Sequential(
-    #         *[L1Regularization(optimizer=optimizer, lambda_l1=lambda_l1)]
-    #         * (lambda_l1 > 0),
-    #         *[L2Regularization(optimizer=optimizer, lambda_l2=lambda_l2)]
-    #         * (lambda_l2 > 0),
-    #         *[EffectiveL2Regularization(optimizer=optimizer, lambda_eff_l2=lambda_eff_l2, 
-    #                                     model=kwargs["model"], batch_size = kwargs["batch_size"])]
-    #         * (lambda_eff_l2 > 0),
-    #         *[NormalizeGrad(optimizer=optimizer)] * normalize_grad,
-    #         *[ClipGradNorm(optimizer=optimizer, max_grad_norm=max_grad_norm)]
-    #         * (max_grad_norm > 0),
-    #     )
-    # )
-    return torch.nn.Sequential(
-        *[L1Regularization(optimizer=optimizer, lambda_l1=lambda_l1)]
-        * (lambda_l1 > 0),
-        *[L2Regularization(optimizer=optimizer, lambda_l2=lambda_l2)]
-        * (lambda_l2 > 0),
-        *[EffectiveL2Regularization(optimizer=optimizer, lambda_eff_l2=lambda_eff_l2, 
-                                    model=kwargs["model"], batch_size = kwargs["batch_size"])]
-        * (lambda_eff_l2 > 0),
-        *[NormalizeGrad(optimizer=optimizer)] * normalize_grad,
-        *[ClipGradNorm(optimizer=optimizer, max_grad_norm=max_grad_norm)]
-        * (max_grad_norm > 0),
+) -> torch.nn.Sequential:
+    """Build the sequence of modules applied to the gradient before the optimizer step.
+
+    Args:
+        optimizer (list[Optimizer]): The optimizers holding the parameters.
+        lambda_l1 (float): Strength of the L1 regularization.
+        lambda_l2 (float): Strength of the L2 regularization.
+        normalize_grad (bool): Whether to normalize the gradient.
+        max_grad_norm (float): Clip the gradient norm. Non-positive disables clipping.
+        lambda_eff_l2 (float, optional): Strength of the effective L2 regularization.
+            Only implemented for Ising-Ising models. Defaults to 0.0.
+
+    Keyword Args:
+        model (EBM): The model. Only required when `lambda_eff_l2 > 0`.
+        batch_size (int): Number of random configurations drawn to estimate the
+            effective L2 penalty. Only required when `lambda_eff_l2 > 0`.
+
+    Returns:
+        torch.nn.Sequential: The modules to apply, in order.
+
+    Notes:
+        - Modules are instantiated lazily: `model` and `batch_size` are only needed
+          when the effective L2 regularization is actually active.
+    """
+    lambda_l1 = lambda_l1 or 0.0
+    lambda_l2 = lambda_l2 or 0.0
+    lambda_eff_l2 = lambda_eff_l2 or 0.0
+    max_grad_norm = -1 if max_grad_norm is None else max_grad_norm
+
+    modules: list[torch.nn.Module] = []
+    if lambda_l1 > 0:
+        modules.append(L1Regularization(optimizer=optimizer, lambda_l1=lambda_l1))
+    if lambda_l2 > 0:
+        modules.append(L2Regularization(optimizer=optimizer, lambda_l2=lambda_l2))
+    if lambda_eff_l2 > 0:
+        missing = [k for k in ("model", "batch_size") if k not in kwargs]
+        if missing:
+            raise ValueError(
+                f"The effective L2 regularization requires {missing} to be passed to "
+                "`build_pre_grad_update`."
+            )
+        modules.append(
+            EffectiveL2Regularization(
+                optimizer=optimizer,
+                lambda_eff_l2=lambda_eff_l2,
+                model=kwargs["model"],
+                batch_size=kwargs["batch_size"],
+            )
         )
+    if normalize_grad:
+        modules.append(NormalizeGrad(optimizer=optimizer))
+    if max_grad_norm > 0:
+        modules.append(ClipGradNorm(optimizer=optimizer, max_grad_norm=max_grad_norm))
+    return torch.nn.Sequential(*modules)
 
 def get_penalty(
     pre_grad_update: torch.nn.Sequential, params: EBM

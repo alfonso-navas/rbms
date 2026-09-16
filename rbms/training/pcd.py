@@ -101,7 +101,7 @@ def train(
             # pbar.write(metrics)
             curr_time = time.perf_counter() - start
             learning_rate = torch.tensor([opt.param_groups[0]["lr"] for opt in optimizer])
-                        save_model(
+            save_model(
                 filename=filename,
                 params=params,
                 chains=parallel_chains,

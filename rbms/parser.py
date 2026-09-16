@@ -286,6 +286,7 @@ default_args: dict[str, Any] = {
     "no_center": False,
     "L1": 0.0,
     "L2": 0.0,
+    "effL2": 0.0,
     "max_norm_grad": -1,
     "optim": "sgd",
     "max_lr": 10,
