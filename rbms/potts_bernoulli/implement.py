@@ -211,33 +211,30 @@ def _init_parameters(
     device: torch.device,
     dtype: torch.dtype,
     var_init: float = 1e-4,
+    init_vbias: bool = True,
 ) -> tuple[Tensor, Tensor, Tensor]:
     _, num_visibles = data.shape
     eps = 1e-7
     num_states = int(torch.max(data) + 1)
-    all_states = torch.arange(num_states).reshape(-1, 1, 1).to(data.device)
-    frequencies = (data == all_states).type(torch.float32).mean(1).to(device)
-    frequencies = get_freq_single_point(
-        convert_data["categorical"]["bernoulli"](data).view(
-            data.shape[0], data.shape[1], num_states
-        ),
-        weights / weights.sum(),
-        1e-4,
-    ).T
-
-    frequencies = torch.clamp(frequencies, min=eps, max=(1.0 - eps))
-    vbias = (
-        (torch.log(frequencies) - 1.0 / num_states * torch.sum(torch.log(frequencies), 0))
-        .to(device=device, dtype=dtype)
-        .T
-    )
+    if init_vbias:
+        all_states = torch.arange(num_states).reshape(-1, 1, 1).to(data.device)
+        frequencies = (data == all_states).type(torch.float32).mean(1).to(device)
+        frequencies = get_freq_single_point(
+            convert_data["categorical"]["bernoulli"](data).view(
+                data.shape[0], data.shape[1], num_states
+            ),
+            weights / weights.sum(),
+            1e-4,
+        ).T
+        frequencies = torch.clamp(frequencies, min=eps, max=(1.0 - eps))
+        vbias = (
+            (torch.log(frequencies) - 1.0 / num_states * torch.sum(torch.log(frequencies), 0))
+            .to(device=device, dtype=dtype).T
+            )
+    else:
+        vbias = torch.zeros((num_visibles, num_states), device=device, dtype=dtype)
     hbias = torch.zeros(num_hiddens, device=device, dtype=dtype)
-    weight_matrix = (
-        torch.randn(
-            size=(num_visibles, num_states, num_hiddens), device=device, dtype=dtype
-        )
-        * var_init
-    )
+    weight_matrix = (torch.randn(size=(num_visibles, num_states, num_hiddens), device=device, dtype=dtype) * var_init)
     return vbias, hbias, weight_matrix
 
 

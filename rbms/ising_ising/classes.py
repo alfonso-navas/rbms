@@ -150,7 +150,7 @@ class IIRBM(RBM):
         )
 
     @staticmethod
-    def init_parameters(num_hiddens, dataset, device, dtype, var_init=0.0001):
+    def init_parameters(num_hiddens, dataset, device, dtype, var_init=0.0001, init_vbias=True):
         data = dataset.data
         # Convert to torch Tensor if necessary
         if isinstance(data, np.ndarray):
@@ -161,6 +161,7 @@ class IIRBM(RBM):
             device=device,
             dtype=dtype,
             var_init=var_init,
+            init_vbias=init_vbias,
         )
         return IIRBM(weight_matrix=weight_matrix, vbias=vbias, hbias=hbias)
 

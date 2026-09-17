@@ -171,6 +171,7 @@ class EBM(ABC):
         device: torch.device | str,
         dtype: torch.dtype,
         var_init: float = 1e-4,
+        init_vbias: bool = True
     ) -> EBM:
         """Initialize the parameters of the RBM.
 
@@ -180,6 +181,7 @@ class EBM(ABC):
             device (torch.device): PyTorch device for the parameters.
             dtype (torch.dtype): PyTorch dtype for the parameters.
             var_init (float, optional): Variance of the weight matrix. Defaults to 1e-4.
+            init_vbias (bool, optional): If True, initialiazes the visible bias as local magnetiztions. Defaults True.
 
         Notes:
             - The number of visible units is induced from the dataset provided.

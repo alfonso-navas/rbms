@@ -120,12 +120,13 @@ def init_parameters(
     device: torch.device,
     dtype: torch.dtype,
     var_init: float = 1e-4,
+    init_vbias: bool = True,
 ) -> IGRBM:
     data = dataset.data
     if isinstance(data, np.ndarray):
         data = torch.from_numpy(dataset.data).to(device=device, dtype=dtype)
     vbias, hbias, weight_matrix = _init_parameters(
-        num_hiddens=num_hiddens, data=data, device=device, dtype=dtype, var_init=var_init
+        num_hiddens=num_hiddens, data=data, device=device, dtype=dtype, var_init=var_init, init_vbias=init_vbias,
     )
     return IGRBM(
         weight_matrix=weight_matrix, vbias=vbias, hbias=hbias, device=device, dtype=dtype

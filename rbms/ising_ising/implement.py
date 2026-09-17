@@ -154,6 +154,7 @@ def _init_parameters(
     device: torch.device,
     dtype: torch.dtype,
     var_init: float = 1e-4,
+    init_vbias:bool =  True,
 ) -> tuple[Tensor, Tensor, Tensor]:
     _, num_visibles = data.shape
     eps = 1e-4
@@ -161,8 +162,11 @@ def _init_parameters(
         torch.randn(size=(num_visibles, num_hiddens), device=device, dtype=dtype)
         * var_init
     )
-    frequencies = data.mean(0)
-    frequencies = torch.clamp(frequencies, min=-(1.0 - eps), max=(1.0 - eps))
-    vbias = torch.atanh(frequencies).to(device=device, dtype=dtype)
+    if init_vbias:
+        frequencies = data.mean(0)
+        frequencies = torch.clamp(frequencies, min=-(1.0 - eps), max=(1.0 - eps))
+        vbias = torch.atanh(frequencies).to(device=device, dtype=dtype)
+    else:
+        vbias = torch.zeros(num_visibles, device=device, dtype=dtype)
     hbias = torch.zeros(num_hiddens, device=device, dtype=dtype)
     return vbias, hbias, weight_matrix

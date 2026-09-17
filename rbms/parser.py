@@ -4,6 +4,14 @@ from typing import Any
 import numpy as np
 import torch
 
+def str2bool(v: str | bool) -> bool:
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    if v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    raise argparse.ArgumentTypeError(f"Boolean value expected, got {v}")
 
 def add_args_pytorch(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """Add an argument group to the parser for pytorch device and dtype
@@ -87,6 +95,14 @@ def add_args_init_rbm(parser: argparse.ArgumentParser) -> argparse.ArgumentParse
         type=str,
         default=None,
         help="(Defaults to None). Model to use. If None is provided, will be a RBM with the same visible type as the dataset and binary hiddens. If restore, this argument is ignored.",
+    )
+    rbm_args.add_argument(
+        "--init_vbias",
+        type=str2bool,
+        nargs="?",
+        const=True,
+        default=None,
+        help="(Defaults to True). If False, visible biases are initialized to 0 instead of the local magnetizations of the data.",
     )
     return parser
 
@@ -291,6 +307,7 @@ default_args: dict[str, Any] = {
     "optim": "sgd",
     "max_lr": 10,
     "training_type": "pcd",
+    "init_vbias": True
 }
 
 

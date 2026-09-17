@@ -42,6 +42,7 @@ def _init_training(
     flags: list[str],
     map_model: dict[str, type[EBM]] = map_model,
     effL2: float = 0.0,
+    init_vbias: bool = True,
 ):
     if model_type is None:
         match train_dataset.variable_type:
@@ -64,6 +65,7 @@ def _init_training(
         dataset=train_dataset,
         device=device,
         dtype=dtype,
+        init_vbias=init_vbias,
     )
 
     # Permanent chains
@@ -82,6 +84,7 @@ def _init_training(
         hyperparameters["num_hiddens"] = num_hiddens
         hyperparameters["num_chains"] = num_chains
         hyperparameters["filename"] = str(filename)
+        hyperparameters["init_vbias"] = init_vbias
     effective_time = torch.zeros_like(lr).cpu().numpy()
     save_model(
         filename=filename,

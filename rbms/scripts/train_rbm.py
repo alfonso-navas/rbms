@@ -91,6 +91,7 @@ def main(args, map_model=map_model):
             device=args["device"],
             flags=flags,
             map_model=map_model,
+            init_vbias=args["init_vbias"],
         )
         args["update"] = 1
 

@@ -266,6 +266,7 @@ class PBM(EBM):
         device: torch.device | str,
         dtype: torch.dtype,
         var_init: float = 1e-4,
+        init_vbias = False,
     ) -> PBM:
         """Initialize the parameters of the RBM.
 
@@ -282,10 +283,13 @@ class PBM(EBM):
             - Visible biases are set to the frequencies of the dataset.
             - The weight matrix is initialized with a Gaussian distribution of variance `var_init`.
         """
-
         fi = get_freq_single_point(
-            one_hot(dataset.data.long(), dataset.get_num_states()), dataset.weights, 1e-4
-        )
+                        one_hot(dataset.data.long(), dataset.get_num_states()), dataset.weights, 1e-4
+                        )
+        if init_vbias:
+            bias_init = torch.log(fi)
+        else:
+            bias_init = torch.zeros_like(fi)
         return PBM(
             weight_matrix=torch.zeros(
                 (
@@ -297,7 +301,7 @@ class PBM(EBM):
                 device=fi.device,
                 dtype=fi.dtype,
             ),
-            bias=torch.log(fi),
+            bias=bias_init,
         )
 
     @property

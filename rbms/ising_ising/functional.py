@@ -199,6 +199,7 @@ def init_parameters(
     device: torch.device,
     dtype: torch.dtype,
     var_init: float = 1e-4,
+    init_vbias: bool = True,
 ) -> IIRBM:
     """Initialize the parameters of the RBM.
 
@@ -225,5 +226,6 @@ def init_parameters(
         device=device,
         dtype=dtype,
         var_init=var_init,
+        init_vbias=init_vbias,
     )
     return IIRBM(weight_matrix=weight_matrix, vbias=vbias, hbias=hbias)

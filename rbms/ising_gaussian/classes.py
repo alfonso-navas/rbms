@@ -157,7 +157,7 @@ class IGRBM(RBM):
         )
 
     @staticmethod
-    def init_parameters(num_hiddens, dataset, device, dtype, var_init=0.0001):
+    def init_parameters(num_hiddens, dataset, device, dtype, var_init=0.0001, init_vbias=True):
         data = dataset.data
         if isinstance(data, np.ndarray):
             data = torch.from_numpy(dataset.data).to(device=device, dtype=dtype)
@@ -167,6 +167,7 @@ class IGRBM(RBM):
             device=device,
             dtype=dtype,
             var_init=var_init,
+            init_vbias=init_vbias
         )
         return IGRBM(
             weight_matrix=weight_matrix,
