@@ -145,6 +145,7 @@ def _init_parameters(
     dtype: torch.dtype,
     var_init: float = 1e-6,
     init_vbias: bool = True,
+    fixed_vbias: bool = False,
 ):
     _, num_visibles = data.shape
     eps = 1e-4
@@ -160,5 +161,8 @@ def _init_parameters(
         )
     else:
         vbias = torch.zeros(num_visibles, device=device, dtype=dtype) 
-    hbias = torch.zeros(num_hiddens, device=device, dtype=dtype)
+    if fixed_vbias:
+        hbias = torch.randn(num_hiddens, device=device, dtype=dtype) * var_init
+    else:
+        hbias = torch.zeros(num_hiddens, device=device, dtype=dtype)
     return vbias, hbias, weight_matrix

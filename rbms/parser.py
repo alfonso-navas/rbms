@@ -104,8 +104,15 @@ def add_args_init_rbm(parser: argparse.ArgumentParser) -> argparse.ArgumentParse
         default=None,
         help="(Defaults to True). If False, visible biases are initialized to 0 instead of the local magnetizations of the data.",
     )
+    rbm_args.add_argument(
+        "--fixed_vbias",
+        type=str2bool,
+        nargs="?",
+        const=True,
+        default=None,
+        help="(Defaults to False). If True, visible biases are frozen throughout ",
+    )
     return parser
-
 
 def add_sampling_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     sampling_args = parser.add_argument_group("Sampling")
@@ -122,7 +129,6 @@ def add_sampling_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParse
         help="(Defaults to 1.0). The inverse temperature of the RBM",
     )
     return parser
-
 
 def add_grad_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     grad_args = parser.add_argument_group("Gradient")
@@ -163,7 +169,6 @@ def add_grad_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
         help="(Defaults to False). Normalize the gradient before update.",
     )
     return parser
-
 
 def add_args_train(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     train_args = parser.add_argument_group("Train")
@@ -226,7 +231,6 @@ def add_args_train(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     )
     return parser
 
-
 def add_args_regularization(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     reg_args = parser.add_argument_group("Regularization")
     reg_args.add_argument(
@@ -249,7 +253,6 @@ def add_args_regularization(parser: argparse.ArgumentParser) -> argparse.Argumen
     )
     return parser
 
-
 def remove_argument(parser, arg):
     """Args:
     parser
@@ -268,7 +271,6 @@ def remove_argument(parser, arg):
                 action._group_actions.remove(group_action)
                 return
 
-
 def match_args_dtype(args: dict[str, Any]) -> dict[str, Any]:
     match args["dtype"]:
         case "int":
@@ -280,7 +282,6 @@ def match_args_dtype(args: dict[str, Any]) -> dict[str, Any]:
         case "double":
             args["dtype"] = torch.float64
     return args
-
 
 default_args: dict[str, Any] = {
     "filename": "RBM.h5",
@@ -307,7 +308,8 @@ default_args: dict[str, Any] = {
     "optim": "sgd",
     "max_lr": 10,
     "training_type": "pcd",
-    "init_vbias": True
+    "init_vbias": True,
+    "fixed_vbias": False,
 }
 
 

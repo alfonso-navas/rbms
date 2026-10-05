@@ -171,7 +171,8 @@ class EBM(ABC):
         device: torch.device | str,
         dtype: torch.dtype,
         var_init: float = 1e-4,
-        init_vbias: bool = True
+        init_vbias: bool = True,
+        fixed_vbias: bool = False,
     ) -> EBM:
         """Initialize the parameters of the RBM.
 

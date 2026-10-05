@@ -65,8 +65,6 @@ class EffectiveL2Regularization(torch.nn.Module):
                 p.grad += curr_penalty
                 self.penalty[id(p)] = curr_penalty.detach()
 
-
-
 class ClipGradNorm(torch.nn.Module):
     def __init__(self, optimizer: list[Optimizer], max_grad_norm, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -79,6 +77,17 @@ class ClipGradNorm(torch.nn.Module):
                 opt.param_groups[0]["params"], max_norm=self.max_grad_norm
             )
 
+class FreezeVbias(torch.nn.Module):
+    """Zeroes the vbias gradient after every pre-grad step,
+    keeping the visible biases frozen at whatever value they were initialized to."""
+
+    def __init__(self, vbias: Tensor, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.vbias = vbias
+
+    def forward(self, input):
+        if self.vbias.grad is not None:
+            self.vbias.grad.zero_()
 
 class NormalizeGrad(torch.nn.Module):
     def __init__(self, optimizer: list[Optimizer], *args, **kwargs):
@@ -101,6 +110,7 @@ def build_pre_grad_update(
     normalize_grad: bool,
     max_grad_norm: float,
     lambda_eff_l2: float | None = 0.0,
+    fixed_vbias: bool = False,
     **kwargs,
 ) -> torch.nn.Sequential:
     """Build the sequence of modules applied to the gradient before the optimizer step.
@@ -155,6 +165,14 @@ def build_pre_grad_update(
         modules.append(NormalizeGrad(optimizer=optimizer))
     if max_grad_norm > 0:
         modules.append(ClipGradNorm(optimizer=optimizer, max_grad_norm=max_grad_norm))
+    if fixed_vbias:
+        model = kwargs.get("model")
+        if model is None:
+            raise ValueError(
+                "`fixed_vbias=True` requires `model` to be passed to "
+                "`build_pre_grad_update`."
+            )
+        modules.append(FreezeVbias(vbias=model.vbias))
     return torch.nn.Sequential(*modules)
 
 def get_penalty(

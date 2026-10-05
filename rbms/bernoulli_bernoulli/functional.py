@@ -185,7 +185,7 @@ def init_parameters(
     device: torch.device,
     dtype: torch.dtype,
     var_init: float = 1e-4,
-    init_vbias: float =True,
+    init_vbias: bool =True,
 ) -> BBRBM:
     """Initialize the parameters of the RBM.
 

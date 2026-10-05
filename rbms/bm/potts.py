@@ -266,7 +266,7 @@ class PBM(EBM):
         device: torch.device | str,
         dtype: torch.dtype,
         var_init: float = 1e-4,
-        init_vbias = False,
+        init_vbias = True,
     ) -> PBM:
         """Initialize the parameters of the RBM.
 

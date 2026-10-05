@@ -92,6 +92,7 @@ def main(args, map_model=map_model):
             flags=flags,
             map_model=map_model,
             init_vbias=args["init_vbias"],
+            fixed_vbias=args["fixed_vbias"],
         )
         args["update"] = 1
 
@@ -132,7 +133,8 @@ def main(args, map_model=map_model):
         max_grad_norm=args["max_norm_grad"],
         lambda_eff_l2=args["effL2"],
         model=params,
-        batch_size = args['batch_size']
+        batch_size = args['batch_size'],
+        fixed_vbias=args["fixed_vbias"],
     )
 
     match args["training_type"]:
