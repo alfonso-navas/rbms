@@ -177,6 +177,8 @@ def main(args, map_model=map_model):
 
 def load_args_from_filename(args: dict):
     with h5py.File(args["filename"], "r") as f:
+        if args["fixed_vbias"] is None and "fixed_vbias" in f["hyperparameters"]:
+            args["fixed_vbias"] = bool(f["hyperparameters"]["fixed_vbias"][()])
         if args["gibbs_steps"] is None:
             args["gibbs_steps"] = f["sampling_args"]["gibbs_steps"][()].item()
         if args["beta"] is None:
@@ -197,8 +199,7 @@ def load_args_from_filename(args: dict):
             args["L2"] = f["grad_args"]["L2"][()].item()
         if args["effL2"] is None and "effL2" in f["grad_args"].keys():
             args["effL2"] = f["grad_args"]["effL2"][()].item()
-        if args["normalize_grad"] is None:
-            args["normalize_grad"] = f["grad_args"]["normalize_grad"][()].item()
+        args["normalize_grad"] = f["grad_args"]["normalize_grad"][()].item()
         if args["max_norm_grad"] is None:
             args["max_norm_grad"] = f["grad_args"]["max_norm_grad"][()].item()
 
